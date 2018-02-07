@@ -15,11 +15,11 @@ typedef struct DNSCryptClient_ {
     uint64_t nonce_ts_last;
 } DNSCryptClient;
 
-ssize_t dnscrypt_client_curve(DNSCryptClient * const client,
+ssize_t dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_version,
                               uint8_t client_nonce[crypto_box_HALF_NONCEBYTES],
                               uint8_t *buf, size_t len, const size_t max_len);
 
-int dnscrypt_client_uncurve(const DNSCryptClient * const client,
+int dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cert_major_version, 
                             const uint8_t client_nonce[crypto_box_HALF_NONCEBYTES],
                             uint8_t * const buf, size_t * const lenp);
 

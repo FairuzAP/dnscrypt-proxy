@@ -42,8 +42,10 @@ cert_parse_version(ProxyContext * const proxy_context,
                         "TXT record with no certificates received");
         return -1;
     }
-    if (signed_bincert->version_major[0] != 0U ||
-        signed_bincert->version_major[1] != 1U) {
+    
+    if (signed_bincert->version_major[0] != 0U || 
+		(signed_bincert->version_major[1] != 1U && 
+		(signed_bincert->version_major[1] != 3U) ) ) {
         logger_noformat(proxy_context, LOG_WARNING,
                         "Unsupported certificate version");
         return -1;
@@ -82,7 +84,7 @@ cert_parse_bincert(ProxyContext * const proxy_context,
                         "This certificate has expired");
         return -1;
     }
-    logger_noformat(proxy_context, LOG_INFO, "This certificate looks valid");
+    logger_noformat(proxy_context, LOG_INFO, "This certificate looks valid?");
     if (previous_bincert == NULL) {
         return 0;
     }
@@ -144,6 +146,12 @@ cert_open_bincert(ProxyContext * const proxy_context,
         free(bincert);
         return -1;
     }
+    
+    COMPILER_ASSERT(sizeof signed_bincert->version_major ==
+                    sizeof bincert->version_major);
+    memcpy(bincert->version_major, signed_bincert->version_major,
+           sizeof bincert->version_major);
+           
     if (*bincert_p != NULL) {
         memset(*bincert_p, 0, sizeof **bincert_p);
         free(*bincert_p);
@@ -266,6 +274,13 @@ cert_query_cb(int result, char type, int count, int ttl,
                     sizeof bincert->magic_query);
     memcpy(proxy_context->dnscrypt_magic_query, bincert->magic_query,
            sizeof proxy_context->dnscrypt_magic_query);
+    
+    printf("%u\n", bincert->version_major[1]);
+    COMPILER_ASSERT(sizeof proxy_context->cert_major_version ==
+                    sizeof bincert->version_major);
+    memcpy(proxy_context->cert_major_version, bincert->version_major,
+           sizeof proxy_context->cert_major_version);
+           
     cert_print_server_key(proxy_context);
     dnscrypt_client_init_magic_query(&proxy_context->dnscrypt_client,
                                      bincert->magic_query);

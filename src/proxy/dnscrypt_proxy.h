@@ -68,6 +68,7 @@ typedef struct ProxyContext_ {
     uint8_t                  dnscrypt_magic_query[DNSCRYPT_MAGIC_QUERY_LEN];
     uint8_t                  provider_publickey[crypto_sign_ed25519_PUBLICKEYBYTES];
     uint8_t                  resolver_publickey[crypto_box_PUBLICKEYBYTES];
+    uint8_t                  cert_major_version[2];
     DNSCryptClient           dnscrypt_client;
     CertUpdater              cert_updater;
     struct sockaddr_storage  local_sockaddr;

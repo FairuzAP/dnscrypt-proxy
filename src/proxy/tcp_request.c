@@ -169,6 +169,7 @@ resolver_proxy_read_cb(struct bufferevent * const proxy_resolver_bev,
     uncurved_len = dns_reply_len;
     DNSCRYPT_PROXY_REQUEST_UNCURVE_START(tcp_request, uncurved_len);
     if (dnscrypt_client_uncurve(&proxy_context->dnscrypt_client,
+                                proxy_context->cert_major_version,
                                 tcp_request->client_nonce,
                                 dns_reply, &uncurved_len) != 0) {
         DNSCRYPT_PROXY_REQUEST_UNCURVE_ERROR(tcp_request);
@@ -380,8 +381,10 @@ client_proxy_read_cb(struct bufferevent * const client_proxy_bev,
     assert(max_len <= sizeof dns_query);
     assert(dns_query_len <= max_len);
     DNSCRYPT_PROXY_REQUEST_CURVE_START(tcp_request, dns_query_len);
+    
     curve_ret =
         dnscrypt_client_curve(&proxy_context->dnscrypt_client,
+                              proxy_context->cert_major_version,
                               tcp_request->client_nonce,
                               dns_query, dns_query_len, max_len);
     if (curve_ret <= (ssize_t) 0) {

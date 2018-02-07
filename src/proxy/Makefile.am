@@ -46,6 +46,8 @@ dnscrypt_proxy_SOURCES = \
 
 AM_CFLAGS = @CWFLAGS@
 
+AM_LDFLAGS = -lssl -lcrypto
+
 AM_CPPFLAGS = \
 	-I../ext \
 	-I../libevent/include \
