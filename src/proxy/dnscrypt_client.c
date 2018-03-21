@@ -18,108 +18,10 @@
 
 #include "dnscrypt.h"
 #include "dnscrypt_client.h"
+#include "cuda_wrapper.h"
 #include "salsa20_random.h"
 #include "utils.h"
 
-int aes_ctr_256_xor(const unsigned char *in, int in_len, const unsigned char *key, unsigned char *out, const unsigned char *iv)
-{
-	unsigned char ctr_in[16];
-	unsigned char ctr_out[16];
-	unsigned int i;
-	unsigned int u;
-	
-	printf("Before ");
-	int inlen = in_len;
-	unsigned char *outcpy = out;
-	for (int i = 0; i < inlen; i++) {
-	  printf("%u ", in[i]);
-	}
-	printf("\n");
-	
-	for (i = 0; i < 8; i++) {
-        ctr_in[i] = iv[i];
-    }
-    for (i = 8; i < 16; i++) {
-        ctr_in[i] = 0;
-    }
-	
-	AES_KEY enc_key;
-    AES_set_encrypt_key(key, 256, &enc_key);    
-    
-	while(in_len >= 16) {
-		AES_encrypt(ctr_in, ctr_out, &enc_key);
-		for (i = 0; i < 16; i++) {
-            out[i] = in[i] ^ ctr_out[i];
-        }
-		u = 1;
-        for (i = 8; i < 16; i++) {
-            u += (unsigned int) ctr_in[i];
-            ctr_in[i] = u;
-            u >>= 8;
-        }
-        in_len -= 16;
-        in += 16;
-        out += 16;
-	}
-	if(in_len) {
-		AES_encrypt(ctr_in, ctr_out, &enc_key);
-		for (i = 0; i < (unsigned int) in_len; i++) {
-            out[i] = in[i] ^ ctr_out[i];
-        }
-	}
-	
-	printf("After ");
-	for (int i = 0; i < inlen; i++) {
-	  printf("%u ", outcpy[i]);
-	}
-	printf("\n");
-	
-	return 0;
-}
-
-int aespoly1305_afternm(
-  unsigned char *c,
-  const unsigned char *m,unsigned long long mlen,
-  const unsigned char *n,
-  const unsigned char *k
-) {
-    int i;
-	printf("AES\n");
-    if (mlen < 32) {
-        return -1;
-    }
-    aes_ctr_256_xor(m, mlen, k, c, n);
-    crypto_onetimeauth_poly1305(c + 16, c + 32, mlen - 32, c);
-    for (i = 0; i < 16; ++i) {
-        c[i] = 0;
-    }
-    return 0;
-}
-
-int aespoly1305_open_afternm(
-  unsigned char *m,
-  const unsigned char *c,unsigned long long clen,
-  const unsigned char *n,
-  const unsigned char *k
-) {
-    unsigned char subkey[32];
-    int           i;
-	printf("AES_Open\n");
-    if (clen < 32) {
-        return -1;
-    }
-    for(int i=0; i<32; i++) subkey[i] = 0;
-    aes_ctr_256_xor(subkey, 32, k, subkey, n);
-    if (crypto_onetimeauth_poly1305_verify(c + 16, c + 32,
-                                           clen - 32, subkey) != 0) {
-        return -1;
-    }
-	aes_ctr_256_xor(c, clen, k, m, n);
-    for (i = 0; i < 32; ++i) {
-        m[i] = 0;
-    }
-    return 0;
-}
 
 static void
 dnscrypt_make_client_nonce(DNSCryptClient * const client,
@@ -178,14 +80,14 @@ dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_
     
 	if(cert_major_version[1] == 3U) {
 		
-		if (aespoly1305_afternm
+		if (aespoly1305_afternm_ref
 			(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
 			 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
 			return (ssize_t) -1;
 		}
 		
 	} else {
-		if (crypto_box_afternm
+		if (crypto_box_afternm_ref
 			(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
 			 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
 			return (ssize_t) -1;
@@ -232,7 +134,7 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
            
     if(cert_major_version[1] == 3U) {
 		
-		if (aespoly1305_open_afternm
+		if (aespoly1305_open_afternm_ref
 			(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
 			 buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
 			 len - DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES,
@@ -241,7 +143,8 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
 		}
 		
 	} else {
-		if (crypto_box_open_afternm
+		printf("HERE\n");
+		if (crypto_box_open_afternm_ref
 			(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
 			 buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
 			 len - DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES,

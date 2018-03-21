@@ -44,9 +44,9 @@ dnscrypt_proxy_SOURCES = \
 	windows_service.c \
 	windows_service.h
 
-AM_CFLAGS = @CWFLAGS@
+AM_CFLAGS = @CWFLAGS@ -fPIC
 
-AM_LDFLAGS = -lssl -lcrypto
+AM_LDFLAGS = -lssl -lcrypto -lcudart
 
 AM_CPPFLAGS = \
 	-I../ext \
