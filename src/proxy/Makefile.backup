@@ -1,12 +1,12 @@
 ### CUDA Dependecies
 NVCC=nvcc
-CUDACXXFLAGS= -fPIC -lstdc++
-CUDAFLAGS= -c 
+CUDACXXFLAGS= -lstdc++
+CUDAFLAGS= -c
 CUDALIBDIRS=-L/usr/local/cuda/lib64
 CUDAINCDIRS=-I/usr/local/cuda/include
 cuda_wrapper.o: cuda_wrapper.cu
-	$(NVCC) $(CUDAFLAGS) cuda_wrapper.cu --compiler-options -fPIC 
-	
+	$(NVCC) -shared -Xcompiler -fPIC $(CUDAFLAGS) cuda_wrapper.cu
+
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
     false; \
@@ -130,8 +130,8 @@ am_dnscrypt_proxy_OBJECTS = app.$(OBJEXT) cert.$(OBJEXT) \
 	logger.$(OBJEXT) options.$(OBJEXT) pid_file.$(OBJEXT) \
 	safe_rw.$(OBJEXT) salsa20_random.$(OBJEXT) sandboxes.$(OBJEXT) \
 	stack_trace.$(OBJEXT) tcp_request.$(OBJEXT) \
-	udp_request.$(OBJEXT) utils.$(OBJEXT) \
-	windows_service.$(OBJEXT) $(am__objects_1) cuda_wrapper.o
+	udp_request.$(OBJEXT) utils.$(OBJEXT) cuda_wrapper.o \
+	windows_service.$(OBJEXT) $(am__objects_1)
 dnscrypt_proxy_OBJECTS = $(am_dnscrypt_proxy_OBJECTS)
 am__DEPENDENCIES_1 =
 #am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
@@ -236,7 +236,7 @@ INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
-ISODATE = 2018-03-21
+ISODATE = 2018-04-01
 LD = /usr/bin/ld -m elf_x86_64
 LDFLAGS =  -pie -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -L/usr/local/lib
 LDNS_LIBS = 
@@ -246,7 +246,7 @@ LIBADD_DLOPEN = -ldl
 LIBADD_SHL_LOAD = 
 LIBLTDL = -lltdl
 LIBOBJS = 
-LIBS = -ldl -lm -lsodium -lcrypto
+LIBS = -ldl -lm 
 LIBTOOL = $(SHELL) $(top_builddir)/libtool
 LIBTOOL_DEPS = libltdl/config/ltmain.sh
 LIPO = 
@@ -357,16 +357,13 @@ dnscrypt_proxy_SOURCES = app.c app.h cert.c cert.h cert_p.h dnscrypt.c \
 	utils.c utils.h windows_service.c windows_service.h \
 	$(am__append_4)
 AM_CFLAGS =  -Wall -Wextra -Wbad-function-cast -Wcast-align -Wcast-qual -Wchar-subscripts -Wcomment -Wfloat-equal -Wformat=2 -Wimplicit -Wmissing-declarations -Wmissing-prototypes -Wnormalized=id -Woverride-init -Wparentheses -Wpointer-arith -Wredundant-decls -Wstrict-prototypes -Wswitch-enum -fPIC
-AM_LDFLAGS = -lssl -lcrypto -lcudart
-AM_CPPFLAGS = -I../ext -I../libevent/include \
-	-I../libnacl/build/localhost/include/local $(am__append_1)
+AM_LDFLAGS = -lssl -lsodium -lcrypto -lcudart
+AM_CPPFLAGS = -I../ext -I../libevent/include $(am__append_1)
 dnscrypt_proxy_LDADD = ../libevent/libevent_extra.la \
-	../libevent/libevent_core.la \
-	../libnacl/build/localhost/lib/local/libnacl.a $(am__append_2)
+	../libevent/libevent_core.la $(am__append_2)
 dnscrypt_proxy_DEPENDENCIES = ../libevent/libevent_extra.la \
-	../libevent/libevent_core.la ../libnacl/.done $(am__append_3)
+	../libevent/libevent_core.la $(am__append_3)
 BUILT_SOURCES = \
-	../libnacl/.done \
 	probes.h
 
 CLEANFILES = \
@@ -457,9 +454,9 @@ clean-sbinPROGRAMS:
 	echo " rm -f" $$list; \
 	rm -f $$list
 
-dnscrypt-proxy$(EXEEXT): $(dnscrypt_proxy_OBJECTS) cuda_wrapper.o $(dnscrypt_proxy_DEPENDENCIES) $(EXTRA_dnscrypt_proxy_DEPENDENCIES) 
+dnscrypt-proxy$(EXEEXT): $(dnscrypt_proxy_OBJECTS) $(dnscrypt_proxy_DEPENDENCIES) $(EXTRA_dnscrypt_proxy_DEPENDENCIES) 
 	@rm -f dnscrypt-proxy$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(dnscrypt_proxy_OBJECTS) $(dnscrypt_proxy_LDADD) $(CUDALIBDIRS) $(CUDAINCDIRS) $(LIBS) $(CUDACXXFLAGS)
+	$(AM_V_CCLD)$(LINK) $(dnscrypt_proxy_OBJECTS) $(CUDALIBDIRS) $(CUDAINCDIRS) $(dnscrypt_proxy_LDADD) $(LIBS) $(CUDACXXFLAGS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -726,9 +723,6 @@ uninstall-am: uninstall-sbinPROGRAMS
 .PRECIOUS: Makefile
 
 
-../libnacl/.done:
-	cd ../libnacl && $(MAKE) $(AM_MAKEFLAGS)
-
 probes.h: probes_no_dtrace.h
 	cat probes_no_dtrace.h > $@
 
@@ -738,3 +732,4 @@ probes_dnscrypt_proxy.h: probes_dnscrypt_proxy.d
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:
+

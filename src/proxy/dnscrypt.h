@@ -5,10 +5,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 
-#include "crypto_box.h"
-#include "crypto_onetimeauth_poly1305.h"
-#include "crypto_secretbox_xsalsa20poly1305.h"
-#include "crypto_stream_xsalsa20.h"
+#include <sodium.h>
 
 #define DNSCRYPT_MAGIC_QUERY_LEN 8U
 #define DNSCRYPT_MAGIC_RESPONSE  "r6fnvWj8"

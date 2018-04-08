@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include "dnscrypt_proxy.h"
+#include "cuda_wrapper.h"
 #include "getpwnam.h"
 #include "options.h"
 #include "logger.h"
@@ -32,6 +33,7 @@ static struct option getopt_long_options[] = {
 #ifndef _WIN32
     { "daemonize", 0, NULL, 'd' },
 #endif
+	{ "use-cuda", 0, NULL, 'c' },
     { "edns-payload-size", 1, NULL, 'e' },
     { "help", 0, NULL, 'h' },
     { "provider-key", 1, NULL, 'k' },
@@ -56,9 +58,9 @@ static struct option getopt_long_options[] = {
     { NULL, 0, NULL, 0 }
 };
 #ifndef _WIN32
-static const char *getopt_options = "a:de:hk:l:n:p:r:u:N:TVX";
+static const char *getopt_options = "a:dce:hk:l:n:p:r:u:N:TVX";
 #else
-static const char *getopt_options = "a:e:hk:n:r:u:N:TVX";
+static const char *getopt_options = "a:ce:hk:n:r:u:N:TVX";
 #endif
 
 #ifndef DEFAULT_CONNECTIONS_COUNT_MAX
@@ -125,6 +127,7 @@ void options_init_with_default(AppContext * const app_context,
 #endif
     proxy_context->user_dir = NULL;
     proxy_context->daemonize = 0;
+    proxy_context->use_cuda = 0;
     proxy_context->tcp_only = 0;
 }
 
@@ -190,6 +193,10 @@ options_parse(AppContext * const app_context,
         case 'd':
             proxy_context->daemonize = 1;
             break;
+        case 'c':
+			init_cuda();
+			proxy_context->use_cuda = 1;
+			break;
         case 'e': {
             char *endptr;
             const unsigned long edns_payload_size = strtoul(optarg, &endptr, 10);

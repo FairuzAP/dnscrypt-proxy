@@ -15,7 +15,7 @@
 
 #include "dnscrypt.h"
 #include "salsa20_random.h"
-#include "randombytes.h"
+#include <sodium.h>
 #include "utils.h"
 
 size_t

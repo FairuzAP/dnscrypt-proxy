@@ -171,7 +171,8 @@ resolver_proxy_read_cb(struct bufferevent * const proxy_resolver_bev,
     if (dnscrypt_client_uncurve(&proxy_context->dnscrypt_client,
                                 proxy_context->cert_major_version,
                                 tcp_request->client_nonce,
-                                dns_reply, &uncurved_len) != 0) {
+                                dns_reply, &uncurved_len, 
+                                proxy_context->use_cuda) != 0) {
         DNSCRYPT_PROXY_REQUEST_UNCURVE_ERROR(tcp_request);
         DNSCRYPT_PROXY_REQUEST_TCP_PROXY_RESOLVER_GOT_INVALID_REPLY(tcp_request);
         logger_noformat(tcp_request->proxy_context, LOG_WARNING,
@@ -386,7 +387,8 @@ client_proxy_read_cb(struct bufferevent * const client_proxy_bev,
         dnscrypt_client_curve(&proxy_context->dnscrypt_client,
                               proxy_context->cert_major_version,
                               tcp_request->client_nonce,
-                              dns_query, dns_query_len, max_len);
+                              dns_query, dns_query_len, max_len,
+                              proxy_context->use_cuda);
     if (curve_ret <= (ssize_t) 0) {
         DNSCRYPT_PROXY_REQUEST_CURVE_ERROR(tcp_request);
         tcp_request_kill(tcp_request);

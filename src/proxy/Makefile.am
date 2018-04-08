@@ -46,29 +46,22 @@ dnscrypt_proxy_SOURCES = \
 
 AM_CFLAGS = @CWFLAGS@ -fPIC
 
-AM_LDFLAGS = -lssl -lcrypto -lcudart
+AM_LDFLAGS = -lssl -lsodium -lcrypto -lcudart
 
 AM_CPPFLAGS = \
 	-I../ext \
-	-I../libevent/include \
-	-I../@NACL_PATH@/include/local
+	-I../libevent/include 
 
 dnscrypt_proxy_LDADD = \
 	../libevent/libevent_extra.la \
-	../libevent/libevent_core.la \
-	../@NACL_PATH@/lib/local/libnacl.a
+	../libevent/libevent_core.la 
 
 dnscrypt_proxy_DEPENDENCIES = \
 	../libevent/libevent_extra.la \
-	../libevent/libevent_core.la \
-	../libnacl/.done
+	../libevent/libevent_core.la 
 
 BUILT_SOURCES = \
-	../libnacl/.done \
 	probes.h
-
-../libnacl/.done:
-	cd ../libnacl && $(MAKE) $(AM_MAKEFLAGS)
 
 probes.h: @PROBES_SOURCE@
 	cat @PROBES_SOURCE@ > $@

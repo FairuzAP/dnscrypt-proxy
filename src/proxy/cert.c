@@ -20,7 +20,7 @@
 
 #include "cert.h"
 #include "cert_p.h"
-#include "crypto_sign_ed25519.h"
+#include <sodium.h>
 #include "dnscrypt_proxy.h"
 #include "logger.h"
 #include "probes.h"
@@ -274,8 +274,8 @@ cert_query_cb(int result, char type, int count, int ttl,
                     sizeof bincert->magic_query);
     memcpy(proxy_context->dnscrypt_magic_query, bincert->magic_query,
            sizeof proxy_context->dnscrypt_magic_query);
-    
-    printf("%u\n", bincert->version_major[1]);
+    logger(proxy_context, LOG_INFO,
+           "Cert Major Version is %u", bincert->version_major[1]);
     COMPILER_ASSERT(sizeof proxy_context->cert_major_version ==
                     sizeof bincert->version_major);
     memcpy(proxy_context->cert_major_version, bincert->version_major,

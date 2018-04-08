@@ -56,7 +56,7 @@ dnscrypt_make_client_nonce(DNSCryptClient * const client,
 ssize_t
 dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_version,
                       uint8_t client_nonce[crypto_box_HALF_NONCEBYTES],
-                      uint8_t *buf, size_t len, const size_t max_len)
+                      uint8_t *buf, size_t len, const size_t max_len, _Bool use_cuda)
 {
     uint8_t  nonce[crypto_box_NONCEBYTES];
     uint8_t *boxed;
@@ -79,18 +79,33 @@ dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_
     memset(nonce + crypto_box_HALF_NONCEBYTES, 0, crypto_box_HALF_NONCEBYTES);
     
 	if(cert_major_version[1] == 3U) {
-		
-		if (aespoly1305_afternm_ref
-			(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
-			 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
-			return (ssize_t) -1;
+		if (use_cuda) {
+			if (aespoly1305_afternm_cuda
+				(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
+				 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
+				return (ssize_t) -1;
+			}				
+		} else {
+			if (aespoly1305_afternm_ref
+				(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
+				 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
+				return (ssize_t) -1;
+			}	
 		}
 		
 	} else {
-		if (crypto_box_afternm_ref
-			(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
-			 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
-			return (ssize_t) -1;
+		if (use_cuda) {
+			if (crypto_box_afternm_cuda
+				(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
+				 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
+				return (ssize_t) -1;
+			}			
+		} else {
+			if (crypto_box_afternm_ref
+				(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
+				 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
+				return (ssize_t) -1;
+			}	
 		}
 	}
     
@@ -99,7 +114,7 @@ dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_
            crypto_box_PUBLICKEYBYTES);
     memcpy(buf + sizeof client->magic_query + crypto_box_PUBLICKEYBYTES,
            nonce, crypto_box_HALF_NONCEBYTES);
-
+    
     return (ssize_t) (len + dnscrypt_query_header_size());
 }
 
@@ -114,7 +129,7 @@ dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_
 int
 dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cert_major_version,
                         const uint8_t client_nonce[crypto_box_HALF_NONCEBYTES],
-                        uint8_t * const buf, size_t * const lenp)
+                        uint8_t * const buf, size_t * const lenp, _Bool use_cuda)
 {
     uint8_t nonce[crypto_box_NONCEBYTES];
     size_t  len = *lenp;
@@ -133,23 +148,41 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
            crypto_box_BOXZEROBYTES);
            
     if(cert_major_version[1] == 3U) {
-		
-		if (aespoly1305_open_afternm_ref
-			(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
-			 buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
-			 len - DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES,
-			 nonce, client->nmkey)) {
-			return -1;
+		if (use_cuda) {
+			if (aespoly1305_open_afternm_cuda
+				(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
+				 buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
+				 len - DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES,
+				 nonce, client->nmkey)) {
+				return -1;
+			}		
+		} else {
+			if (aespoly1305_open_afternm_ref
+				(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
+				 buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
+				 len - DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES,
+				 nonce, client->nmkey)) {
+				return -1;
+			}	
 		}
 		
 	} else {
-		printf("HERE\n");
-		if (crypto_box_open_afternm_ref
-			(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
-			 buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
-			 len - DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES,
-			 nonce, client->nmkey)) {
-			return -1;
+		if (use_cuda) {
+			if (crypto_box_open_afternm_cuda
+				(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
+				 buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
+				 len - DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES,
+				 nonce, client->nmkey)) {
+				return -1;
+			}		
+		} else {
+			if (crypto_box_open_afternm_ref
+				(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
+				 buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
+				 len - DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES,
+				 nonce, client->nmkey)) {
+				return -1;
+			}	
 		}
 	}
     dnscrypt_memzero(nonce, sizeof nonce);
@@ -161,6 +194,7 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
     *lenp = len - (DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES);
     memmove(buf,
             buf + DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES, *lenp);
+            
     return 0;
 }
 
@@ -183,7 +217,7 @@ dnscrypt_client_init_nmkey(DNSCryptClient * const client,
 #endif
     memcpy(client->nmkey, server_publickey, crypto_box_PUBLICKEYBYTES);
     crypto_box_beforenm(client->nmkey, client->nmkey, client->secretkey);
-
+	set_aes_key(client->nmkey);
     return 0;
 }
 

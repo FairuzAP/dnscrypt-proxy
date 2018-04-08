@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <openssl/aes.h>
+#include <sodium.h>
 
 #define MSG_MAX 1000000
 #define GETU32(pt) (((u32)(pt)[0] << 24) ^ ((u32)(pt)[1] << 16) ^ ((u32)(pt)[2] <<  8) ^ ((u32)(pt)[3]))
@@ -37,6 +38,9 @@ aespoly1305_open_afternm_ref(unsigned char *m,
 
 void
 init_cuda();
+
+void
+set_aes_key(const unsigned char *key);
 
 int
 crypto_box_afternm_cuda(unsigned char *c, const unsigned char *m,

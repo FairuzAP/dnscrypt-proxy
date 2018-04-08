@@ -11,8 +11,7 @@
 
 #include "app.h"
 #include "cert.h"
-#include "crypto_box.h"
-#include "crypto_sign_ed25519.h"
+#include <sodium.h>
 #include "dnscrypt_client.h"
 #include "queue.h"
 
@@ -101,6 +100,7 @@ typedef struct ProxyContext_ {
     unsigned int             connections_count_max;
     int                      log_fd;
     _Bool                    daemonize;
+    _Bool                    use_cuda;
     _Bool                    listeners_started;
     _Bool                    tcp_only;
 } ProxyContext;

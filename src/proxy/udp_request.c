@@ -226,7 +226,8 @@ resolver_to_proxy_cb(evutil_socket_t proxy_resolver_handle, short ev_flags,
     if (dnscrypt_client_uncurve
         (&udp_request->proxy_context->dnscrypt_client,
 			udp_request->proxy_context->cert_major_version,
-            udp_request->client_nonce, dns_reply, &uncurved_len) != 0) {
+            udp_request->client_nonce, dns_reply, &uncurved_len,
+            udp_request->proxy_context->use_cuda) != 0) {
         DNSCRYPT_PROXY_REQUEST_UNCURVE_ERROR(udp_request);
         DNSCRYPT_PROXY_REQUEST_UDP_PROXY_RESOLVER_GOT_INVALID_REPLY(udp_request);
         logger_noformat(udp_request->proxy_context, LOG_WARNING,
@@ -496,7 +497,8 @@ client_to_proxy_cb(evutil_socket_t client_proxy_handle, short ev_flags,
         dnscrypt_client_curve(&udp_request->proxy_context->dnscrypt_client,
                               udp_request->proxy_context->cert_major_version,
                               udp_request->client_nonce, dns_query,
-                              dns_query_len, max_len);
+                              dns_query_len, max_len, 
+                              udp_request->proxy_context->use_cuda);
     if (curve_ret <= (ssize_t) 0) {
         DNSCRYPT_PROXY_REQUEST_CURVE_ERROR(udp_request);
         return;
