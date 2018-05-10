@@ -53,7 +53,6 @@ int crypto_stream_salsa20_xor_ref(unsigned char *c, const unsigned char *m,
 int crypto_stream_xsalsa20_xor_ref(unsigned char *c, const unsigned char *m,
 								unsigned long long mlen, const unsigned char *n,
 								const unsigned char *k) {
-	printf("CPU XSalsa20\n");
 	unsigned char subkey[32];
     int           ret;
 
@@ -68,8 +67,9 @@ crypto_box_afternm_ref(unsigned char *c, const unsigned char *m,
                        unsigned long long mlen,
                        const unsigned char *n,
                        const unsigned char *k) {
+   	printf("CPU XSalsa20 Encrypt\n");
     int i;
-
+    
     if (mlen < 32) {
         return -1;
     }
@@ -85,6 +85,7 @@ crypto_box_open_afternm_ref(unsigned char *m, const unsigned char *c,
                             unsigned long long clen,
                             const unsigned char *n,
                             const unsigned char *k) {
+   	printf("CPU XSalsa20 Decrypt\n");
     unsigned char subkey[32];
     int           i;
 
@@ -251,7 +252,6 @@ void crypto_stream_salsa20_xor_cuda(unsigned char *c, const unsigned char *m,
 int crypto_stream_xsalsa20_xor_cuda(unsigned char *c, const unsigned char *m,
 								unsigned long long mlen, const unsigned char *n,
 								const unsigned char *k)  {
-	printf("GPU XSalsa20\n");
 	unsigned char subkey[32];
     crypto_core_hsalsa20(subkey, n, k, NULL);
     
@@ -272,6 +272,7 @@ crypto_box_afternm_cuda(unsigned char *c, const unsigned char *m,
                         unsigned long long mlen,
                         const unsigned char *n,
                         const unsigned char *k) {
+   	printf("GPU XSalsa20 Encrypt\n");
     int i;
 
     if (mlen < 32) {
@@ -289,6 +290,7 @@ crypto_box_open_afternm_cuda(unsigned char *m, const unsigned char *c,
                              unsigned long long clen,
                              const unsigned char *n,
                              const unsigned char *k) {
+   	printf("GPU XSalsa20 Decrypt\n");
     unsigned char subkey[32];
     int           i;
 
@@ -693,8 +695,6 @@ int aes_ctr_256_xor(const unsigned char *in, int in_len,
 					const unsigned char *key, 
 					unsigned char *out, 
 					const unsigned char *iv) {
-	printf("CPU AES\n");
-
 	unsigned char ctr_in[16];
 	unsigned char ctr_out[16];
 	unsigned int i;
@@ -737,6 +737,7 @@ int aespoly1305_afternm_ref(unsigned char *c,
 							const unsigned char *m,unsigned long long mlen,
 							const unsigned char *n,
 							const unsigned char *k) {
+   	printf("CPU AES Encrypt\n");
     int i;
     if (mlen < 32) {
         return -1;
@@ -752,6 +753,7 @@ int aespoly1305_open_afternm_ref(unsigned char *m,
 								 const unsigned char *c,unsigned long long clen,
 								 const unsigned char *n,
 								 const unsigned char *k) {
+   	printf("CPU AES Decrypt\n");
     unsigned char subkey[32];
     int           i;
     
@@ -895,6 +897,7 @@ void aes_ctr_256_xor_cuda(const unsigned char *in, unsigned long long in_len,
 	__shared__ u32 Te2[256];
 	__shared__ u32 Te3[256];
 	__shared__ unsigned char key_char[244];
+	__shared__ unsigned char d_iv[8];
 	unsigned int i;
 	
 	Te0[threadIdx.x] = d_Te0[threadIdx.x];
@@ -904,6 +907,9 @@ void aes_ctr_256_xor_cuda(const unsigned char *in, unsigned long long in_len,
 	if(threadIdx.x < 244) {
 		key_char[threadIdx.x] = ((unsigned char *)enc_key)[threadIdx.x];
 	}
+	if(threadIdx.x < 8) {
+		d_iv[threadIdx.x] = iv[threadIdx.x];
+	}
 	__syncthreads();
 	
 	unsigned int idx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -912,7 +918,7 @@ void aes_ctr_256_xor_cuda(const unsigned char *in, unsigned long long in_len,
 	}
 	
 	for (i = 0; i < 8; i++) {
-        ctr_in[i] = iv[i];
+        ctr_in[i] = d_iv[i];
     }
     for (i = 8; i < 16; i++) {
         idx += (unsigned int) ctr_in[i];
@@ -937,7 +943,6 @@ int aes_ctr_256_xor_cuda_handler(const unsigned char *in, unsigned long long in_
 								 const unsigned char *key, 
 								 unsigned char *out, 
 								 const unsigned char *iv) {
-	printf("GPU AES\n");
     cudaMemcpy(d_all_aes+244+8, in, in_len, cudaMemcpyHostToDevice);
     cudaMemcpy(d_all_aes+244, iv, 8, cudaMemcpyHostToDevice);
     
@@ -953,6 +958,7 @@ int aespoly1305_afternm_cuda(unsigned char *c,
 							const unsigned char *m,unsigned long long mlen,
 							const unsigned char *n,
 							const unsigned char *k) {
+   	printf("GPU AES Encrypt\n");
     int i;
     if (mlen < 32) {
         return -1;
@@ -968,6 +974,7 @@ int aespoly1305_open_afternm_cuda(unsigned char *m,
 								 const unsigned char *c,unsigned long long clen,
 								 const unsigned char *n,
 								 const unsigned char *k) {
+   	printf("GPU AES Decrypt\n");
     unsigned char subkey[32];
     int           i;
     
@@ -988,7 +995,7 @@ int aespoly1305_open_afternm_cuda(unsigned char *m,
 }
 
 void init_cuda() {
-	cudaFree(0);
+	cudaSetDeviceFlags(cudaDeviceScheduleSpin);
     cudaMalloc(&d_all_xsalsa, (32 + 8 + MSG_MAX + MSG_MAX));
     cudaMalloc(&d_all_aes, (244 + 8 + MSG_MAX + MSG_MAX));
 	cudaMemcpyToSymbol(d_Te0, h_Te0, sizeof h_Te0);

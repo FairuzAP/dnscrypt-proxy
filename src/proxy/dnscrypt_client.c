@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <event2/event.h>
 
@@ -22,6 +23,18 @@
 #include "salsa20_random.h"
 #include "utils.h"
 
+
+struct timespec timer_start(){
+    struct timespec start_time;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start_time);
+    return start_time;
+}
+long timer_end(struct timespec start_time){
+    struct timespec end_time;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end_time);
+    long diffInNanos = (end_time.tv_sec - start_time.tv_sec) * (long)1e9 + (end_time.tv_nsec - start_time.tv_nsec);
+    return diffInNanos;
+}
 
 static void
 dnscrypt_make_client_nonce(DNSCryptClient * const client,
@@ -60,6 +73,10 @@ dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_
 {
     uint8_t  nonce[crypto_box_NONCEBYTES];
     uint8_t *boxed;
+    
+    struct timespec before;
+	long nsec;
+	before = timer_start();
 
 #if crypto_box_MACBYTES > 8U + crypto_box_NONCEBYTES
 # error Cannot curve in-place
@@ -77,36 +94,36 @@ dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_
     dnscrypt_make_client_nonce(client, nonce);
     memcpy(client_nonce, nonce, crypto_box_HALF_NONCEBYTES);
     memset(nonce + crypto_box_HALF_NONCEBYTES, 0, crypto_box_HALF_NONCEBYTES);
-    
+	
 	if(cert_major_version[1] == 3U) {
-		if (use_cuda) {
-			if (aespoly1305_afternm_cuda
-				(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
-				 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
-				return (ssize_t) -1;
-			}				
-		} else {
+		//~ if (use_cuda) {
+			//~ if (aespoly1305_afternm_cuda
+				//~ (boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
+				 //~ len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
+				//~ return (ssize_t) -1;
+			//~ }				
+		//~ } else {
 			if (aespoly1305_afternm_ref
 				(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
 				 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
 				return (ssize_t) -1;
 			}	
-		}
+		//~ }
 		
-	} else {
-		if (use_cuda) {
-			if (crypto_box_afternm_cuda
-				(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
-				 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
-				return (ssize_t) -1;
-			}			
-		} else {
+	} else if(cert_major_version[1] == 1U) {
+		//~ if (use_cuda) {
+			//~ if (crypto_box_afternm_cuda
+				//~ (boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
+				 //~ len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
+				//~ return (ssize_t) -1;
+			//~ }			
+		//~ } else {
 			if (crypto_box_afternm_ref
 				(boxed - crypto_box_BOXZEROBYTES, boxed - crypto_box_BOXZEROBYTES,
 				 len + crypto_box_ZEROBYTES, nonce, client->nmkey) != 0) {
 				return (ssize_t) -1;
 			}	
-		}
+		//~ }
 	}
     
     memcpy(buf, client->magic_query, sizeof client->magic_query);
@@ -114,6 +131,9 @@ dnscrypt_client_curve(DNSCryptClient * const client, uint8_t * const cert_major_
            crypto_box_PUBLICKEYBYTES);
     memcpy(buf + sizeof client->magic_query + crypto_box_PUBLICKEYBYTES,
            nonce, crypto_box_HALF_NONCEBYTES);
+    
+    nsec = timer_end(before);
+    printf("Time: %ld nsec\n", nsec);
     
     return (ssize_t) (len + dnscrypt_query_header_size());
 }
@@ -133,6 +153,10 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
 {
     uint8_t nonce[crypto_box_NONCEBYTES];
     size_t  len = *lenp;
+    
+    struct timespec before;
+	long nsec;
+	before = timer_start();
 
     if (len <= dnscrypt_response_header_size() ||
         memcmp(buf, DNSCRYPT_MAGIC_RESPONSE,
@@ -146,7 +170,7 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
            crypto_box_NONCEBYTES);
     memset(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES, 0,
            crypto_box_BOXZEROBYTES);
-           
+	    
     if(cert_major_version[1] == 3U) {
 		if (use_cuda) {
 			if (aespoly1305_open_afternm_cuda
@@ -166,7 +190,7 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
 			}	
 		}
 		
-	} else {
+	} else if(cert_major_version[1] == 1U) {
 		if (use_cuda) {
 			if (crypto_box_open_afternm_cuda
 				(buf + DNSCRYPT_SERVER_BOX_OFFSET - crypto_box_BOXZEROBYTES,
@@ -185,6 +209,7 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
 			}	
 		}
 	}
+	
     dnscrypt_memzero(nonce, sizeof nonce);
     assert(len >= DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES);
     while (buf[--len] == 0U) { }
@@ -194,7 +219,10 @@ dnscrypt_client_uncurve(const DNSCryptClient * const client, uint8_t * const cer
     *lenp = len - (DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES);
     memmove(buf,
             buf + DNSCRYPT_SERVER_BOX_OFFSET + crypto_box_BOXZEROBYTES, *lenp);
-            
+    
+    nsec = timer_end(before);
+    printf("Time: %ld nsec\n", nsec);
+    
     return 0;
 }
 
